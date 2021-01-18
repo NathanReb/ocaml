@@ -54,3 +54,11 @@ include Topcommon.PRINTER with type Printer.t = Obj.t
 val load_file : bool -> formatter -> string -> bool
 
 val init: unit -> unit
+
+(* JIT hook *)
+
+type evaluation_outcome = Result of Obj.t | Exception of exn
+
+val register_jit :
+  (Format.formatter -> Lambda.program -> evaluation_outcome) ->
+  unit

@@ -24,6 +24,8 @@ open Outcometree
 open Topcommon
 module String = Misc.Stdlib.String
 
+type evaluation_outcome = Result of Obj.t | Exception of exn
+
 (* The table of toplevel value bindings and its accessors *)
 
 let toplevel_value_bindings : Obj.t String.Map.t ref = ref String.Map.empty
@@ -87,6 +89,8 @@ include Topcommon.MakePrinter(Obj)(Genprintval.Make(Obj)(EvalPath))
 (* Load in-core and execute a lambda term *)
 
 let may_trace = ref false (* Global lock on tracing *)
+
+let register_jit _ = failwith "Cannot register a JIT compiler for bytecode toplevel"
 
 let load_lambda ppf lam =
   if !Clflags.dump_rawlambda then fprintf ppf "%a@." Printlambda.lambda lam;
