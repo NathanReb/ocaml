@@ -747,6 +747,7 @@ build_os
 build_vendor
 build_cpu
 build
+ocamlnat
 stdlib_manpages
 PACKLD
 flexlink_flags
@@ -913,6 +914,7 @@ enable_force_safe_string
 enable_flat_float_array
 enable_function_sections
 with_afl
+enable_ocamlnat
 enable_shared
 enable_static
 with_pic
@@ -1593,6 +1595,7 @@ Optional Features:
                           do not use flat float arrays
   --disable-function-sections
                           do not emit each function in a separate section
+  --enable-ocamlnat       build the native toplevel (ocamlnat)
   --enable-shared[=PKGS]  build shared libraries [default=yes]
   --enable-static[=PKGS]  build static libraries [default=yes]
   --enable-fast-install[=PKGS]
@@ -2898,6 +2901,7 @@ VERSION=4.11.2+dev0-2020-08-31
 
 
 
+
 ## Generated files
 
 ac_config_files="$ac_config_files Makefile.common"
@@ -3289,6 +3293,12 @@ fi
 # Check whether --with-afl was given.
 if test "${with_afl+set}" = set; then :
   withval=$with_afl;
+fi
+
+
+# Check whether --enable-ocamlnat was given.
+if test "${enable_ocamlnat+set}" = set; then :
+  enableval=$enable_ocamlnat;
 fi
 
 
@@ -16993,6 +17003,12 @@ if test x"$DEFAULT_STRING" = "xunsafe"; then :
   default_safe_string=false
 else
   default_safe_string=true
+fi
+
+if test x"$enable_ocamlnat" = "xyes"; then :
+  ocamlnat=true
+else
+  ocamlnat=false
 fi
 
 oc_cflags="$common_cflags $internal_cflags"

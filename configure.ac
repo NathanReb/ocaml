@@ -167,6 +167,7 @@ AC_SUBST([flexdll_chain])
 AC_SUBST([flexlink_flags])
 AC_SUBST([PACKLD])
 AC_SUBST([stdlib_manpages])
+AC_SUBST([ocamlnat])
 
 ## Generated files
 
@@ -389,6 +390,10 @@ AC_ARG_ENABLE([function-sections],
 AC_ARG_WITH([afl],
   [AS_HELP_STRING([--with-afl],
     [use the AFL fuzzer])])
+
+AC_ARG_ENABLE([ocamlnat],
+  [AS_HELP_STRING([--enable-ocamlnat],
+    [build the native toplevel (ocamlnat)])])
 
 AS_IF([test x"$enable_unix_lib" = "xno"],
   [AS_IF([test x"$enable_debugger" = "xyes"],
@@ -1859,6 +1864,10 @@ AS_IF([test x"$enable_force_safe_string" = "xno"],
 AS_IF([test x"$DEFAULT_STRING" = "xunsafe"],
   [default_safe_string=false],
   [default_safe_string=true])
+
+AS_IF([test x"$enable_ocamlnat" = "xyes"],
+  [ocamlnat=true],
+  [ocamlnat=false])
 
 oc_cflags="$common_cflags $internal_cflags"
 oc_cppflags="$common_cppflags $internal_cppflags"
