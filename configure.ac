@@ -392,8 +392,8 @@ AC_ARG_WITH([afl],
     [use the AFL fuzzer])])
 
 AC_ARG_ENABLE([ocamlnat],
-  [AS_HELP_STRING([--enable-ocamlnat],
-    [build the native toplevel (ocamlnat)])])
+  [AS_HELP_STRING([--disable-ocamlnat],
+    [do not build the native toplevel (ocamlnat)])])
 
 AS_IF([test x"$enable_unix_lib" = "xno"],
   [AS_IF([test x"$enable_debugger" = "xyes"],
@@ -1865,9 +1865,9 @@ AS_IF([test x"$DEFAULT_STRING" = "xunsafe"],
   [default_safe_string=false],
   [default_safe_string=true])
 
-AS_IF([test x"$enable_ocamlnat" = "xyes"],
-  [ocamlnat=true],
-  [ocamlnat=false])
+AS_IF([test x"$enable_ocamlnat" = "xno"],
+  [ocamlnat=false],
+  [ocamlnat=true])
 
 oc_cflags="$common_cflags $internal_cflags"
 oc_cppflags="$common_cppflags $internal_cppflags"

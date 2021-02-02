@@ -1595,7 +1595,7 @@ Optional Features:
                           do not use flat float arrays
   --disable-function-sections
                           do not emit each function in a separate section
-  --enable-ocamlnat       build the native toplevel (ocamlnat)
+  --disable-ocamlnat      do not build the native toplevel (ocamlnat)
   --enable-shared[=PKGS]  build shared libraries [default=yes]
   --enable-static[=PKGS]  build static libraries [default=yes]
   --enable-fast-install[=PKGS]
@@ -17005,10 +17005,10 @@ else
   default_safe_string=true
 fi
 
-if test x"$enable_ocamlnat" = "xyes"; then :
-  ocamlnat=true
-else
+if test x"$enable_ocamlnat" = "xno"; then :
   ocamlnat=false
+else
+  ocamlnat=true
 fi
 
 oc_cflags="$common_cflags $internal_cflags"
