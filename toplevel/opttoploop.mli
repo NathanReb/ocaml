@@ -154,8 +154,16 @@ val override_sys_argv : string array -> unit
 
 (* JIT hook *)
 
+type res = Ok of Obj.t | Err of string
 type evaluation_outcome = Result of Obj.t | Exception of exn
 
 val register_jit :
   (Format.formatter -> Lambda.program -> evaluation_outcome) ->
   unit
+
+(* Required for experimentation *)
+
+val need_symbol : string -> bool
+val backend : (module Backend_intf.S)
+val phrase_name : string ref
+val dll_run : string -> string -> evaluation_outcome
