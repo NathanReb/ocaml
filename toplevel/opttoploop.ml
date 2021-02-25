@@ -29,12 +29,32 @@ type evaluation_outcome = Result of Obj.t | Exception of exn
 
 let _dummy = (Ok (Obj.magic 0), Err "")
 
+module Jit = struct
+  type t =
+    {
+      load : Format.formatter -> Lambda.program -> evaluation_outcome;
+      lookup_symbol : string -> Obj.t option;
+    }
+end
+
+let jit = ref None
+
+let register_jit j = jit := Some j
+
 external ndl_run_toplevel: string -> string -> res
   = "caml_natdynlink_run_toplevel"
 
+let default_lookup sym =
+  Dynlink.unsafe_get_global_value ~bytecode_or_asm_symbol:sym
+
 let global_symbol id =
   let sym = Compilenv.symbol_for_global id in
-  match Dynlink.unsafe_get_global_value ~bytecode_or_asm_symbol:sym with
+  let lookup =
+    match !jit with
+      | None -> default_lookup
+      | Some {Jit.lookup_symbol; _} -> lookup_symbol
+  in
+  match lookup sym with
   | None ->
     fatal_error ("Opttoploop.global_symbol " ^ (Ident.unique_name id))
   | Some obj -> obj
@@ -239,10 +259,6 @@ module Backend = struct
 end
 let backend = (module Backend : Backend_intf.S)
 
-let jit = ref None
-
-let register_jit f = jit := Some f
-
 let default_load ppf program =
   let dll =
     if !Clflags.keep_asm_file then !phrase_name ^ ext_dll
@@ -283,7 +299,7 @@ let load_lambda ppf ~module_ident ~required_globals lam size =
   in
   match !jit with
   | None -> default_load ppf program
-  | Some f -> f ppf program
+  | Some {Jit.load; _} -> load ppf program
 
 (* Print the outcome of an evaluation *)
 

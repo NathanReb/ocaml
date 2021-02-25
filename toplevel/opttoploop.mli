@@ -155,11 +155,20 @@ val override_sys_argv : string array -> unit
 (* JIT hook *)
 
 type res = Ok of Obj.t | Err of string
+
 type evaluation_outcome = Result of Obj.t | Exception of exn
 
-val register_jit :
-  (Format.formatter -> Lambda.program -> evaluation_outcome) ->
-  unit
+module Jit : sig
+  type t =
+    {
+      load : Format.formatter -> Lambda.program -> evaluation_outcome;
+      lookup_symbol : string -> Obj.t option;
+    }
+end
+
+val register_jit : Jit.t -> unit
+
+val default_lookup : string -> Obj.t option
 
 (* Required for experimentation *)
 
