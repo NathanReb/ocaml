@@ -22,6 +22,7 @@
            /* also secure_getenv */
 
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -267,14 +268,15 @@ char * caml_dlerror(void)
 /* Use normal dlopen */
 
 #ifndef RTLD_GLOBAL
-#define RTLD_GLOBAL 0
+#error "RTLD_GLOBAL is undefined"
 #endif
 #ifndef RTLD_LOCAL
-#define RTLD_LOCAL 0
+#error "RTLD_LOCAL is undefined"
 #endif
 
 void * caml_dlopen(char * libname, int for_execution, int global)
 {
+  printf("caml_dlopen(libname: %s, global: %d)\n", libname, global);
   return dlopen(libname, RTLD_NOW | (global ? RTLD_GLOBAL : RTLD_LOCAL));
   /* Could use RTLD_LAZY if for_execution == 0, but needs testing */
 }
@@ -292,9 +294,10 @@ void * caml_dlsym(void * handle, const char * name)
 void * caml_globalsym(const char * name)
 {
 #ifdef RTLD_DEFAULT
+  printf("caml_globalsym(name: %s)\n", name);
   return caml_dlsym(RTLD_DEFAULT, name);
 #else
-  return NULL;
+#error "RTLD_DEFAULT is undefined"
 #endif
 }
 
