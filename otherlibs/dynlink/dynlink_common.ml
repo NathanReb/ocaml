@@ -332,22 +332,30 @@ module Make (P : Dynlink_platform_intf.S) = struct
 
   let load priv filename =
     init ();
+    Printf.printf "Dynlink.load %b %s\n%!" priv filename;
     let filename = dll_filename filename in
     match P.load ~filename ~priv with
     | exception exn -> raise (DT.Error (Cannot_open_dynamic_library exn))
     | handle, units ->
+      Printf.printf "Dynlink.load: dlopen successful\n%!";
       try
+        Printf.printf "Dynlink.load 1\n%!";
         global_state := check filename units !global_state ~priv;
+        Printf.printf "Dynlink.load 2\n%!";
         P.run_shared_startup handle;
+        Printf.printf "Dynlink.load 3\n%!";
         List.iter
           (fun unit_header ->
+             Printf.printf "Dynlink.load unit_header: %s\n%!" (P.Unit_header.name unit_header);
              P.run handle ~unit_header ~priv;
              if not priv then begin
                global_state := set_loaded filename unit_header !global_state
              end)
           units;
+        Printf.printf "Dynlink.load 4\n%!";
         P.finish handle
       with exn ->
+        Printf.printf "Dynlink.load 5\n%!";
         P.finish handle;
         raise exn
 
