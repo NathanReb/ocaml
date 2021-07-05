@@ -97,7 +97,7 @@ let load_file_exn ppf name0 =
         Dynlink.loadfile fn;
         Result.Ok ()
       with
-      | Dynlink.Error (Module_already_loaded _) -> Ok ()
+      | Dynlink.Error (Module_already_loaded _) -> Result.Ok ()
       | exn -> Error exn
     in
     if tmp then (try Sys.remove fn with Sys_error _ -> ());
