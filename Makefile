@@ -231,6 +231,9 @@ opt.opt: checknative
 ifeq "$(WITH_OCAMLDOC)-$(STDLIB_MANPAGES)" "ocamldoc-true"
 	$(MAKE) manpages
 endif
+ifeq "$(WITH_OCAMLNAT)" "true"
+	$(MAKE) ocamlnat
+endif
 
 # Core bootstrapping cycle
 .PHONY: coreboot

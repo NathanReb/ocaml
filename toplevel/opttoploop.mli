@@ -37,8 +37,18 @@ type directive_fun =
    | Directive_ident of (Longident.t -> unit)
    | Directive_bool of (bool -> unit)
 
+type directive_info = {
+  section: string;
+  doc: string;
+}
+
+val add_directive : string -> directive_fun -> directive_info -> unit
+
 val directive_table : (string, directive_fun) Hashtbl.t
         (* Table of known directives, with their execution function *)
+
+val directive_info_table : (string, directive_info) Hashtbl.t
+
 val toplevel_env : Env.t ref
         (* Typing environment for the toplevel *)
 val initialize_toplevel_env : unit -> unit
@@ -151,3 +161,28 @@ val override_sys_argv : string array -> unit
    This is called by [run_script] so that [Sys.argv] represents
    "script.ml args..." instead of the full command line:
    "ocamlrun unix.cma ... script.ml args...". *)
+
+(* JIT hook *)
+
+type res = Ok of Obj.t | Err of string
+
+type evaluation_outcome = Result of Obj.t | Exception of exn
+
+module Jit : sig
+  type t =
+    {
+      load : Format.formatter -> Lambda.program -> evaluation_outcome;
+      lookup_symbol : string -> Obj.t option;
+    }
+end
+
+val register_jit : Jit.t -> unit
+
+val default_lookup : string -> Obj.t option
+
+(* Required for experimentation *)
+
+val need_symbol : string -> bool
+val backend : (module Backend_intf.S)
+val phrase_name : string ref
+val dll_run : string -> string -> evaluation_outcome

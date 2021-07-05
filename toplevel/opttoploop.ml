@@ -29,12 +29,32 @@ type evaluation_outcome = Result of Obj.t | Exception of exn
 
 let _dummy = (Ok (Obj.magic 0), Err "")
 
+module Jit = struct
+  type t =
+    {
+      load : Format.formatter -> Lambda.program -> evaluation_outcome;
+      lookup_symbol : string -> Obj.t option;
+    }
+end
+
+let jit = ref None
+
+let register_jit j = jit := Some j
+
 external ndl_run_toplevel: string -> string -> res
   = "caml_natdynlink_run_toplevel"
 
+let default_lookup sym =
+  Dynlink.unsafe_get_global_value ~bytecode_or_asm_symbol:sym
+
 let global_symbol id =
   let sym = Compilenv.symbol_for_global id in
-  match Dynlink.unsafe_get_global_value ~bytecode_or_asm_symbol:sym with
+  let lookup =
+    match !jit with
+      | None -> default_lookup
+      | Some {Jit.lookup_symbol; _} -> lookup_symbol
+  in
+  match lookup sym with
   | None ->
     fatal_error ("Opttoploop.global_symbol " ^ (Ident.unique_name id))
   | Some obj -> obj
@@ -60,6 +80,10 @@ type directive_fun =
    | Directive_ident of (Longident.t -> unit)
    | Directive_bool of (bool -> unit)
 
+type directive_info = {
+  section: string;
+  doc: string;
+}
 
 let remembered = ref Ident.empty
 
@@ -239,24 +263,12 @@ module Backend = struct
 end
 let backend = (module Backend : Backend_intf.S)
 
-let load_lambda ppf ~module_ident ~required_globals lam size =
-  if !Clflags.dump_rawlambda then fprintf ppf "%a@." Printlambda.lambda lam;
-  let slam = Simplif.simplify_lambda lam in
-  if !Clflags.dump_lambda then fprintf ppf "%a@." Printlambda.lambda slam;
-
+let default_load ppf program =
   let dll =
     if !Clflags.keep_asm_file then !phrase_name ^ ext_dll
     else Filename.temp_file ("caml" ^ !phrase_name) ext_dll
   in
   let filename = Filename.chop_extension dll in
-  let program =
-    { Lambda.
-      code = slam;
-      main_module_block_size = size;
-      module_ident;
-      required_globals;
-    }
-  in
   let middle_end =
     if Config.flambda then Flambda_middle_end.lambda_to_clambda
     else Closure_middle_end.lambda_to_clambda
@@ -266,7 +278,6 @@ let load_lambda ppf ~module_ident ~required_globals lam size =
     ~middle_end ~ppf_dump:ppf program;
   Asmlink.call_linker_shared [filename ^ ext_obj] dll;
   Sys.remove (filename ^ ext_obj);
-
   let dll =
     if Filename.is_implicit dll
     then Filename.concat (Sys.getcwd ()) dll
@@ -278,12 +289,28 @@ let load_lambda ppf ~module_ident ~required_globals lam size =
      files) *)
   res
 
+let load_lambda ppf ~module_ident ~required_globals lam size =
+  if !Clflags.dump_rawlambda then fprintf ppf "%a@." Printlambda.lambda lam;
+  let slam = Simplif.simplify_lambda lam in
+  if !Clflags.dump_lambda then fprintf ppf "%a@." Printlambda.lambda slam;
+  let program =
+    { Lambda.
+      code = slam;
+      main_module_block_size = size;
+      module_ident;
+      required_globals;
+    }
+  in
+  match !jit with
+  | None -> default_load ppf program
+  | Some {Jit.load; _} -> load ppf program
+
 (* Print the outcome of an evaluation *)
 
 let pr_item =
   Printtyp.print_items
     (fun env -> function
-      | Sig_value(id, {val_kind = Val_reg; val_type}, _) ->
+       | Sig_value(id, {val_kind = Val_reg; val_type; _}, _) ->
           Some (outval_of_value env (toplevel_value id) val_type)
       | _ -> None
     )
@@ -305,7 +332,14 @@ let print_exception_outcome ppf exn =
 (* The table of toplevel directives.
    Filled by functions from module topdirs. *)
 
-let directive_table = (Hashtbl.create 13 : (string, directive_fun) Hashtbl.t)
+let directive_table = (Hashtbl.create 23 : (string, directive_fun) Hashtbl.t)
+
+let directive_info_table =
+  (Hashtbl.create 23 : (string, directive_info) Hashtbl.t)
+
+let add_directive name dir_fun dir_info =
+  Hashtbl.add directive_table name dir_fun;
+  Hashtbl.add directive_info_table name dir_info
 
 (* Execute a toplevel phrase *)
 
@@ -396,7 +430,7 @@ let execute_phrase print_outcome ppf phr =
       with x ->
         toplevel_env := oldenv; raise x
       end
-  | Ptop_dir {pdir_name = {Location.txt = dir_name}; pdir_arg } ->
+  | Ptop_dir {pdir_name = {Location.txt = dir_name; _}; pdir_arg; _ } ->
       let d =
         try Some (Hashtbl.find directive_table dir_name)
         with Not_found -> None
@@ -408,8 +442,8 @@ let execute_phrase print_outcome ppf phr =
       | Some d ->
           match d, pdir_arg with
           | Directive_none f, None -> f (); true
-          | Directive_string f, Some {pdira_desc = Pdir_string s} -> f s; true
-          | Directive_int f, Some {pdira_desc = Pdir_int (n,None)} ->
+          | Directive_string f, Some {pdira_desc = Pdir_string s; _} -> f s; true
+          | Directive_int f, Some {pdira_desc = Pdir_int (n,None); _} ->
              begin match Int_literal_converter.int n with
              | n -> f n; true
              | exception _ ->
@@ -418,12 +452,12 @@ let execute_phrase print_outcome ppf phr =
                        dir_name;
                false
              end
-          | Directive_int _, Some {pdira_desc = Pdir_int (_, Some _)} ->
+          | Directive_int _, Some {pdira_desc = Pdir_int (_, Some _); _} ->
               fprintf ppf "Wrong integer literal for directive `%s'.@."
                 dir_name;
               false
-          | Directive_ident f, Some {pdira_desc = Pdir_ident lid} -> f lid; true
-          | Directive_bool f, Some {pdira_desc = Pdir_bool b} -> f b; true
+          | Directive_ident f, Some {pdira_desc = Pdir_ident lid; _} -> f lid; true
+          | Directive_bool f, Some {pdira_desc = Pdir_bool b; _} -> f b; true
           | _ ->
               fprintf ppf "Wrong type of argument for directive `%s'.@."
                 dir_name;
