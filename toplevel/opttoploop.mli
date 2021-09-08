@@ -180,9 +180,10 @@ val register_jit : Jit.t -> unit
 
 val default_lookup : string -> Obj.t option
 
+val need_symbol : string -> bool
+
+val phrase_name : string ref
+
 (* Required for experimentation *)
 
-val need_symbol : string -> bool
-val backend : (module Backend_intf.S)
-val phrase_name : string ref
 val dll_run : string -> string -> evaluation_outcome
